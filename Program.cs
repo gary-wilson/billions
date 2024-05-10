@@ -5,16 +5,18 @@ namespace billions;
 
 internal sealed class Program
 {
+    const int runs = 5;
     static void Main(string[] args)
     {
         Console.WriteLine("Started");
         List<TimeSpan> times = new();
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < runs; i++)
         {
             var stopWatch = new Stopwatch();
             stopWatch.Start();
-            FileChunker.Start("C:\\temp\\measurements-1000000000.txt", 20);
-            ////Console.WriteLine(coordinator.Output);
+            FileChunker.FilePath = "C:\\temp\\measurements-1000000000.txt";
+            FileChunker.Start( 20);
+
             stopWatch.Stop();
             Console.WriteLine(stopWatch.ElapsedMilliseconds + "ms");
             times.Add(stopWatch.Elapsed);
@@ -23,5 +25,9 @@ internal sealed class Program
             GC.WaitForPendingFinalizers();
             Thread.Sleep(1000);
         }
+
+        var sorted = times.OrderBy(x => x.Ticks).ToList();
+        var avg = sorted.Skip(1).Take(runs - 2).Average(x => x.TotalSeconds);
+        Console.WriteLine($"Score: {avg:F} Seconds");
     }
 }
