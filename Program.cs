@@ -14,9 +14,9 @@ internal sealed class Program
         {
             var stopWatch = new Stopwatch();
             stopWatch.Start();
-            FileChunker.FilePath = "C:\\temp\\measurements-1000000000.txt";
-            FileChunker.Start( 20);
-
+            Chunky.FilePath = "C:\\temp\\measurements-1000000000.txt";
+            Chunky.Start( 20);
+            var result = Chunky.Stats.GenerateOutput();
             stopWatch.Stop();
             Console.WriteLine(stopWatch.ElapsedMilliseconds + "ms");
             times.Add(stopWatch.Elapsed);
