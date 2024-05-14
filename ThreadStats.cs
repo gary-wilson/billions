@@ -28,7 +28,7 @@ namespace billions
                 // todo .. 
             }
 
-            System.Buffers.Text.Utf8Parser.TryParse(nameSpan, out decimal value, out _);
+            System.Buffers.Text.Utf8Parser.TryParse(valueSpan, out decimal value, out _);
             var id = FastId(nameSpan);
             if (Stats.TryGetValue(id, out var stats))
             {

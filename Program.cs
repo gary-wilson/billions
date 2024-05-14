@@ -19,6 +19,11 @@ internal sealed class Program
             Chunky.Start( 20);
             var result = Chunky.Stats.GenerateOutput();
             stopWatch.Stop();
+            if (i==0)
+            {
+                File.WriteAllText("C:\\temp\\measurements-1000000000.res", result);
+            }
+
             Console.WriteLine(stopWatch.ElapsedMilliseconds + "ms");
             times.Add(stopWatch.Elapsed);
 
