@@ -1,10 +1,7 @@
-﻿using System;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using static billions.Consts;
 
@@ -12,7 +9,7 @@ namespace billions
 {
     public static class Chunky
     {
-        public static StationStats Stats = new StationStats();
+        public static Stats Stats = new Stats();
 
         public static string FilePath;
 
@@ -20,6 +17,7 @@ namespace billions
 
         public unsafe static void Start(int threads)
         {
+            
             TotalLines = 0;
             using var fs = new FileStream(FilePath,
                 new FileStreamOptions()
@@ -35,7 +33,7 @@ namespace billions
             long batchSize = fs.Length / threads;
 
             fs.Position = batchSize;
-            while (fs.ReadByte() != 10)
+            while (fs.ReadByte() != NewLine)
             {
             }
 
@@ -50,7 +48,7 @@ namespace billions
                 fs.Position = start + batchSize;
                 int seek = fs.ReadByte();
 
-                while (seek != -1 && seek != 10)
+                while (seek != -1 && seek != NewLine)
                 {
                     // read till eof or newline
                     seek = fs.ReadByte();
@@ -78,6 +76,8 @@ namespace billions
             {
                 long lines = Chunk(start, end);
                 Interlocked.Add(ref TotalLines, lines);
+                DebugMsg("thread done {0} - {1} : {2}", start, end, lines);
+
             })
             {
                 Priority = ThreadPriority.AboveNormal,
@@ -88,12 +88,13 @@ namespace billions
         }
 
 
+
+
         public static int ChunkyFilling(long fileStart, long fileEnd)
         {
             const long BUFFER_SIZE = 200_000;
 
-            List<Station> stationList = new(100000);
-            var stations = CollectionsMarshal.AsSpan(stationList);
+            var stationList = Stats.NewThread();
 
             using var fs = File.OpenHandle(
                 FilePath,
@@ -119,9 +120,9 @@ namespace billions
             {
                 while (reader.TryReadTo(out ReadOnlySpan<byte> line, NewLine, advancePastDelimiter: true))
                 {
-                   
+
                     lines++;
-                    NewStation(in line,in stations);
+                    NewStation(in line, in stationList);
                 }
 
                 if (pending <= 0)
@@ -185,90 +186,14 @@ namespace billions
         }
 
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void NewStation(in ReadOnlySpan<byte> line, in Span<Station> stations)
+        public static void NewStation(in ReadOnlySpan<byte> line, in ThreadStats stats)
         {
             var seperatorIndex = line.IndexOf(Semicolon);
-
-            //var nameStr = Encoding.UTF8.GetString(nameSpan);
-            //var dec = decimal.Parse(valueSpan);
 
             var nameSpan = line.Slice(0, seperatorIndex);
             var valueSpan = line.Slice(seperatorIndex + 1);
 
-            stations.Fill(new Station()
-            {
-                NameBytes = nameSpan.ToArray(),
-                ValueBytes = valueSpan.ToArray(),
-            });
-        }
-    }
-
-
-    public struct Station
-    {
-        //public LazyString Name;
-
-        //public LazyDecimal Value;
-
-        public Memory<byte> NameBytes { get; set; }
-
-        public Memory<byte> ValueBytes { get; set; }
-
-
-    }
-
-    public unsafe struct LazyString : IEqualityComparer<LazyString>
-    {
-        public readonly unsafe void* Pointer;
-        public readonly int Length;
-
-        public LazyString(void* pointer, int length)
-        {
-            Pointer = pointer;
-            Length = length;
-        }
-
-        public string Value => Encoding.UTF8.GetString(AsSpan());
-
-        public Span<byte> AsSpan() => new Span<byte>(Pointer, Length);
-
-        public bool Equals(LazyString x, LazyString y)
-        {
-            return MemoryExtensions.SequenceEqual<byte>(x.AsSpan(), y.AsSpan());
-            //return x.Value == y.Value;
-        }
-
-        public int GetHashCode([DisallowNull] LazyString obj)
-        {
-            return obj.Value.GetHashCode();
-        }
-    }
-
-    public unsafe struct LazyDecimal : IEqualityComparer<LazyDecimal>
-    {
-        public readonly unsafe void* Pointer;
-        public readonly int Length;
-
-        public LazyDecimal(void* pointer, int length)
-        {
-            Pointer = pointer;
-            Length = length;
-        }
-
-        public decimal Value => decimal.Parse(Encoding.UTF8.GetString(AsSpan()));
-
-        public Span<byte> AsSpan() => new Span<byte>(Pointer, Length);
-
-        public bool Equals(LazyDecimal x, LazyDecimal y)
-        {
-            return MemoryExtensions.SequenceEqual<byte>(x.AsSpan(), y.AsSpan());
-
-            //return x.Value == y.Value;
-        }
-
-        public int GetHashCode([DisallowNull] LazyDecimal obj)
-        {
-            return obj.Value.GetHashCode();
+            stats.Add(nameSpan,valueSpan);
         }
     }
 }
@@ -286,16 +211,4 @@ public class FileSegment : ReadOnlySequenceSegment<byte>
 
         Memory = memory;
     }
-
-    //public FileSegment Append(Memory<byte> memory)
-    //{
-    //    var nextSegment = new FileSegment(memory)
-    //    {
-    //        RunningIndex = RunningIndex + Memory.Length
-    //    };
-
-    //    Next = nextSegment;
-
-    //    return nextSegment;
-    //}
 }
