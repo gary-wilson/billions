@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Text;
 
 namespace billions;
 
@@ -16,11 +15,17 @@ internal sealed class Program
             stopWatch.Start();
             Chunky.FilePath = "C:\\temp\\measurements-1000000000.txt";
             Consts.Stopwatch.Start();
-            Chunky.Start( 20);
+            Chunky.Threads = 20;
+            Chunky.Start();
             var result = Chunky.Stats.GenerateOutput();
             stopWatch.Stop();
             if (i==0)
             {
+                if (false)
+                {
+                    Chunky.Stats.WriteNames("C:\\temp\\measurements-1000000000.names");
+                }
+
                 File.WriteAllText("C:\\temp\\measurements-1000000000.res", result);
             }
 

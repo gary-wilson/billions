@@ -1,8 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Text;
 using static billions.Consts;
 
 namespace billions
@@ -11,11 +9,13 @@ namespace billions
     {
         public static Stats Stats = new Stats();
 
+        public static int Threads = 20;
+
         public static string FilePath;
 
         public static long TotalLines;
 
-        public unsafe static void Start(int threads)
+        public unsafe static void Start()
         {
             
             TotalLines = 0;
@@ -30,7 +30,7 @@ namespace billions
                 });
             fs.Position = 0;
 
-            long batchSize = fs.Length / threads;
+            long batchSize = fs.Length / Threads;
 
             fs.Position = batchSize;
             while (fs.ReadByte() != NewLine)
@@ -38,11 +38,11 @@ namespace billions
             }
 
             AddDebugInfo(0, fs.Position);
-            List<Thread> threadArray = new List<Thread>(threads);
+            List<Thread> threadArray = new List<Thread>(Threads);
             long end = fs.Position;
             threadArray.Add(StartThread(0, end));
 
-            for (int t = 1; t < threads - 1; t++)
+            for (int t = 1; t < Threads - 1; t++)
             {
                 long start = fs.Position;
                 fs.Position = start + batchSize;
@@ -61,7 +61,7 @@ namespace billions
             AddDebugInfo(fs.Position, fs.Length);
             threadArray.Add(StartThread(fs.Position, fs.Length));
 
-            for (int t = 0; t < threads; t++)
+            for (int t = 0; t < Threads; t++)
             {
                 threadArray[t].Join();
             }
@@ -86,9 +86,6 @@ namespace billions
             thread.Start();
             return thread;
         }
-
-
-
 
         public static int ChunkyFilling(long fileStart, long fileEnd)
         {
@@ -199,7 +196,7 @@ namespace billions
 }
 
 
-public class FileSegment : ReadOnlySequenceSegment<byte>
+public sealed class FileSegment : ReadOnlySequenceSegment<byte>
 {
     public FileSegment(ReadOnlyMemory<byte> memory, FileSegment? previous = null)
     {
